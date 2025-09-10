@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PuckCalcs</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background-color: #fff;
+    font-family: Mono;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  .page-container {
+    display: flex;
+    width: 100vw;
+    min-height: 100vh;
+    height: 100%;
+  }
+  .sidebar {
+    width: 7%;
+    min-width: 44px;
+    padding: 6px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-height: 100vh;
+    overflow-y: visible;
+    position: sticky;
+    top: 0;
+    box-sizing: border-box;
+    background: none;
+  }
+  .sidebar img {
+    width: 30px;
+    height: 40px;
+    display: block;
+    object-fit: contain;
+    margin-bottom: 2px;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+    background: none;
+    box-sizing: border-box;
+  }
+  .main-content {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  header {
+    font-family: Mono; 
+    font-size: 3rem;
+    margin: 30px 0 10px 0;
+    font-weight: bold;
+    color: #222;
+  }
+  .nhl-logo {
+    width: 80px;
+    margin-bottom: 10px;
+  }
+  .button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: center;
+    justify-content: center;
+    margin: 40px auto 0 auto;
+    max-width: 420px;
+  }
+  .tooltip-button {
+    position: relative;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    background-color: #696969;
+    color: white;
+    transition: background-color 0.3s, transform 0.3s;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Mono;
+  }
+  .tooltip-button:hover {
+    background-color: #000000;
+    transform: scale(1.05);
+  }
+  .tooltip-button .tooltip-text {
+    visibility: hidden;
+    width: 260px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1;
+    pointer-events: none;
+    font-family: Mono;
+  }
+  .tooltip-button .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+  }
+  .tooltip-button:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (max-width: 600px) {
+    header { font-size: 2rem; }
+    .button-container { max-width: 95vw; }
+    .tooltip-button { font-size: 1rem; }
+    .sidebar { display: none; }
+    .main-content { width: 100%; }
+    .page-container { flex-direction: column; }
+  }
+  
+</style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="sidebar east" id="east-sidebar"></div>
+    <div class="main-content">
+      <header>
+        <img class="nhl-logo" src="https://upload.wikimedia.org/wikipedia/en/3/3a/05_NHL_Shield.svg" alt="NHL Logo" />
+        NHL Calculators
+      </header>
+      <div class="button-container">
+
+        <button class="tooltip-button" onclick="location.href='nhlwhatif.html'">
+          Playoff Scenario Calc
+          <span class="tooltip-text">see playoff odds and scenarios for a selected team</span>
+        </button>
+        <button class="tooltip-button" onclick="location.href='nhlwinners.html'">
+          Winner’s Calc
+          <span class="tooltip-text">see the odds of teams winning the stanley cup based off of regular season points</span>
+        </button>
+        <button class="tooltip-button" onclick="location.href='newscencalc.html'">
+          WhatIf Calc
+          <span class="tooltip-text">choose a team and the number of games they win to see where they fit in the standings</span>
+        </button>        
+        <button class="tooltip-button" onclick="location.href = 'singleteam.html'">
+          WhatIf Calc: Single Team Picker
+          <span class="tooltip-text">choose a team and the games where they win, lose, ot lose in all the upcoming games to see where your selected team ends up</span>
+        </button>
+        <button class="tooltip-button" onclick="location.href = 'allteam.html'">
+          WhatIf Calc: Multiple Team Picker
+          <span class="tooltip-text">choose the teams who win, lose, ot lose in all the upcoming games to see where all the teams fit in the standings</span>
+        </button>
+      </div>
+    </div>
+    <div class="sidebar west" id="west-sidebar"></div>
+  </div>
+  <script>
+    const eastTeams = [
+      "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
+      "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers", "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders", "New York Rangers", "Washington Capitals"
+    ];
+    const westTeams = [
+      "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild", "Nashville Predators", "St. Louis Blues", "Winnipeg Jets",
+      "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights", "Utah Mammoth"
+    ];
+    const teamAbbrevs = {
+      "Anaheim Ducks": "ANA", "Arizona Coyotes": "ARI", "Boston Bruins": "BOS", "Buffalo Sabres": "BUF",
+      "Calgary Flames": "CGY", "Carolina Hurricanes": "CAR", "Chicago Blackhawks": "CHI", "Colorado Avalanche": "COL",
+      "Columbus Blue Jackets": "CBJ", "Dallas Stars": "DAL", "Detroit Red Wings": "DET", "Edmonton Oilers": "EDM",
+      "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montreal Canadiens": "MTL",
+      "Nashville Predators": "NSH", "New Jersey Devils": "NJD", "New York Islanders": "NYI", "New York Rangers": "NYR",
+      "Ottawa Senators": "OTT", "Philadelphia Flyers": "PHI", "Pittsburgh Penguins": "PIT", "San Jose Sharks": "SJS",
+      "Seattle Kraken": "SEA", "St. Louis Blues": "STL", "Tampa Bay Lightning": "TBL", "Toronto Maple Leafs": "TOR",
+      "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG", 
+      "Utah Mammoth": "UTA"
+    };
+
+    function populateSidebar(sidebarId, teams) {
+      fetch('https://api-web.nhle.com/v1/standings/now')
+        .then(res => res.json())
+        .then(data => {
+          const logoMap = {};
+          data.standings.forEach(team => {
+            logoMap[team.teamName.default] = team.teamLogo;
+          });
+          const sidebar = document.getElementById(sidebarId);
+          sidebar.innerHTML = "";
+          teams.forEach(name => {
+            const img = document.createElement('img');
+            img.src = logoMap[name] || `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+            img.alt = name;
+            img.title = name;
+            sidebar.appendChild(img);
+          });
+        })
+        .catch(() => {
+          const sidebar = document.getElementById(sidebarId);
+          sidebar.innerHTML = "";
+          teams.forEach(name => {
+            const img = document.createElement('img');
+            img.src = `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+            img.alt = name;
+            img.title = name;
+            sidebar.appendChild(img);
+          });
+        });
+    }
+    populateSidebar('east-sidebar', eastTeams);
+    populateSidebar('west-sidebar', westTeams);
+  </script>
+</body>
+</html>

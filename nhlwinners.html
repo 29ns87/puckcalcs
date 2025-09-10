@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PuckCalcs: WC</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: mono;
+      background-color: #fff;
+      color: #000000;
+      min-height: 100vh;
+    }
+    .page-container {
+      display: flex;
+
+    }
+    .sidebar {
+      width: 7%;
+      min-width: 44px;
+      padding: 6px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      max-height: 100vh;
+      overflow-y: visible;
+      position: sticky;
+      top: 0;
+      box-sizing: border-box;
+      background: none;
+    }
+    .sidebar img {
+      width: 30px;
+      height: 40px;
+      display: block;
+      object-fit: contain;
+      margin-bottom: 2px;
+      border-radius: 8px;
+      transition: border-color 0.3s;
+      background: none;
+      box-sizing: border-box;
+    }
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    h1 {
+      color: #000000;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .chart-container {
+      width: 102%;
+      max-width: 800px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      margin: auto;
+      font-family: Mono;
+
+    }
+    
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main-content { width: 100%; }
+      .page-container { flex-direction: column; }
+    }
+    
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="page-container">
+    <div class="sidebar east" id="east-sidebar"></div>
+    <div class="main-content">
+      <h1>Winner's Calc: NHL</h1>
+      <div class="chart-container">
+        <canvas id="oddsChart"></canvas>
+      </div>
+    </div>
+    <div class="sidebar west" id="west-sidebar"></div>
+  </div>
+<script>
+  const eastTeams = [
+    "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
+    "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers", "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders", "New York Rangers", "Washington Capitals"
+  ];
+  const westTeams = [
+    "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild", "Nashville Predators", "St. Louis Blues", "Winnipeg Jets",
+    "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights", "Utah Mammoth"
+  ];
+  const teamAbbrevs = {
+    "Anaheim Ducks": "ANA", "Arizona Coyotes": "ARI", "Boston Bruins": "BOS", "Buffalo Sabres": "BUF",
+    "Calgary Flames": "CGY", "Carolina Hurricanes": "CAR", "Chicago Blackhawks": "CHI", "Colorado Avalanche": "COL",
+    "Columbus Blue Jackets": "CBJ", "Dallas Stars": "DAL", "Detroit Red Wings": "DET", "Edmonton Oilers": "EDM",
+    "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montreal Canadiens": "MTL",
+    "Nashville Predators": "NSH", "New Jersey Devils": "NJD", "New York Islanders": "NYI", "New York Rangers": "NYR",
+    "Ottawa Senators": "OTT", "Philadelphia Flyers": "PHI", "Pittsburgh Penguins": "PIT", "San Jose Sharks": "SJS",
+    "Seattle Kraken": "SEA", "St. Louis Blues": "STL", "Tampa Bay Lightning": "TBL", "Toronto Maple Leafs": "TOR",
+    "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG", "Utah Mammoth": "UTA"
+  };
+  function populateSidebar(sidebarId, teams) {
+    fetch('https://api-web.nhle.com/v1/standings/now')
+      .then(res => res.json())
+      .then(data => {
+        const logoMap = {};
+        data.standings.forEach(team => {
+          logoMap[team.teamName.default] = team.teamLogo;
+        });
+        const sidebar = document.getElementById(sidebarId);
+        sidebar.innerHTML = "";
+        teams.forEach(name => {
+          const img = document.createElement('img');
+          img.src = logoMap[name] || `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+          img.alt = name;
+          img.title = name;
+          sidebar.appendChild(img);
+        });
+      })
+      .catch(() => {
+        const sidebar = document.getElementById(sidebarId);
+        sidebar.innerHTML = "";
+        teams.forEach(name => {
+          const img = document.createElement('img');
+          img.src = `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+          img.alt = name;
+          img.title = name;
+          sidebar.appendChild(img);
+        });
+      });
+  }
+  populateSidebar('east-sidebar', eastTeams);
+  populateSidebar('west-sidebar', westTeams);
+
+  const CORS_PROXY = "https://corsproxy.io/?";
+  const API_URL = "https://api-web.nhle.com/v1/standings/now";
+  const nhlColors = {
+    "Winnipeg Jets": {bg:"#041e42", fg:"#fff"},
+    "Dallas Stars": {bg:"#006847", fg:"#fff"},
+    "Florida Panthers": {bg:"#c8102e", fg:"#fff"},
+    "Boston Bruins": {bg:"#ffb81c", fg:"#111"},
+    "Chicago Blackhawks": {bg:"#cf0a2c", fg:"#fff"},
+    "Edmonton Oilers": {bg:"#041e42", fg:"#fff"},
+    "New York Rangers": {bg:"#0038a8", fg:"#fff"},
+    "Colorado Avalanche": {bg:"#6f263d", fg:"#fff"},
+    "Vancouver Canucks": {bg:"#00205b", fg:"#fff"},
+    "Toronto Maple Leafs": {bg:"#00205b", fg:"#fff"},
+    "Vegas Golden Knights": {bg:"#b4975a", fg:"#222"},
+    "Carolina Hurricanes": {bg:"#e03a3e", fg:"#fff"},
+    "Ottawa Senators": {bg:"#e31837", fg:"#fff"},
+    "Pittsburgh Penguins": {bg:"#fcbb30", fg:"#222"},
+    "Seattle Kraken": {bg:"#355464", fg:"#fff"},
+    "Nashville Predators": {bg:"#fdb81c", fg:"#222"},
+    "San Jose Sharks": {bg:"#006d75", fg:"#fff"},
+    "Minnesota Wild": {bg:"#154734", fg:"#fff"},
+    "Detroit Red Wings": {bg:"#ce1126", fg:"#fff"},
+    "St. Louis Blues": {bg:"#002f87", fg:"#fff"},
+    "Calgary Flames": {bg:"#c8102e", fg:"#fff"},
+    "Columbus Blue Jackets": {bg:"#002654", fg:"#fff"},
+    "Buffalo Sabres": {bg:"#002654", fg:"#fff"},
+    "Arizona Coyotes": {bg:"#8c2633", fg:"#fff"},
+    "Los Angeles Kings": {bg:"#111", fg:"#fff"},
+    "Montréal Canadiens": {bg:"#af1e2d", fg:"#fff"},
+    "Philadelphia Flyers": {bg:"#fa4616", fg:"#fff"},
+    "Tampa Bay Lightning": {bg:"#002868", fg:"#fff"},
+    "New Jersey Devils": {bg:"#ce1126", fg:"#fff"},
+    "Washington Capitals": {bg:"#041e42", fg:"#fff"},
+    "Anaheim Ducks": {bg:"#FC4C02", fg:"#222"},
+    "New York Islanders": {bg:"#00539b", fg:"#fff"},
+    "Utah Hockey Club": {bg:"#6CACE3", fg:"#ffffff"},
+  };
+  async function fetchNHLStandings() {
+    try {
+      const response = await fetch(CORS_PROXY + API_URL);
+      const data = await response.json();
+
+      const teams = [];
+      const points = [];
+
+      data.standings.forEach(team => {
+        teams.push(team.teamName.default);
+        points.push(team.points);
+      });
+
+      const totalPoints = points.reduce((a, b) => a + b, 0);
+      const percentages = points.map(p => ((p / totalPoints) * 100).toFixed(2));
+
+      renderPieChart(teams, percentages);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  }
+
+  function renderPieChart(labels, data) {
+    const ctx = document.getElementById('oddsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Win Probability (%)',
+          data: data,
+          backgroundColor: labels.map(name => nhlColors[name]?.bg)
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#222',
+              font: {
+                size: 10,
+                family: 'Mono'
+              }
+            }
+          },
+          tooltip: {
+            titleFont: {
+              size: 12,
+              family: 'Mono'
+            },
+            bodyFont: {
+              size: 10,
+              family: 'Mono'
+            },
+            callbacks: {
+              label: function(context) {
+                return `${context.label}: ${context.raw}%`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Kick it off
+  fetchNHLStandings();
+</script>
+</body>
+</html>

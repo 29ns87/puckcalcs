@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SCalc: WhatIf Calc</title>
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      
+    }
+    h1 {
+      text-align: center;
+    }
+    .page-container {
+      display: flex;
+
+    }
+    .sidebar {
+      width: 7%;
+      min-width: 44px;
+      padding: 6px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      max-height: 100vh;
+      overflow-y: visible;
+      position: sticky;
+      top: 0;
+    }
+    .sidebar img {
+      width: 30px;
+      height: 40px;
+      display: block;
+      object-fit: contain;
+      margin-bottom: 2px; 
+    }
+    .sidebar-label {
+      font-size: 0.8em;
+      font-weight: bold;
+      margin-bottom: 4px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .main-content {
+      width: 86%; /* 100% - 2*7% */
+      min-width: 0;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family:mono;
+      margin: 0;
+      padding: 0;
+    }
+    .team-ui-box {
+      padding: 0;
+      margin: 0;
+      font-family: Mono;
+      
+    }
+    .team-ui-box input, .team-ui-box select {
+      padding: 10px;
+      margin: 8px 0;
+      width: 100%;
+      max-width: 320px;
+      box-sizing: border-box;
+      font-family: Mono;
+      
+      
+    }
+      .team-ui-box button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      background: #E4E5E6;
+      cursor: pointer;
+      font-family: Mono;
+      justify-content: right;
+
+    }
+    .team-ui-box button:hover {
+      background: #222;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 10px;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      font-family: Mono;
+    }
+    .highlight {
+      font-weight: bold;
+      background-color: #dff0d8;
+    }
+
+    .viewBtn {
+      padding: 8px 12px;
+      display: flex;
+      border: none;
+      border-radius: 4px;
+      background: #E4E5E6;
+      cursor: pointer;
+      font-family: Mono;
+    }
+    .viewBtn:hover {
+      background: #222;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .viewBtnselected {
+      background: #222;
+      color: #fff;
+      font-weight: bold;
+
+    }
+
+    #output {
+      transition: color 0.3s;
+    }
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+      .main-content {
+        width: 100%;
+      }
+      .page-container {
+        flex-direction: column;
+        font-family: Mono;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-container">
+    <div class="sidebar east" id="east-sidebar">
+
+    </div>
+    <div class="main-content">
+      <h1>What If Calculator</h1>
+
+      <div class="team-ui-box" id="uiBox">
+        <label for="teamInput">Team Name:</label>
+        <select id="teamSelect">
+          <option value="">Select a team...</option>
+        </select>
+        <label for="winsSelect"> Remaining Games:</label>
+        <select id="winsSelect"></select>
+        <button id="simulateBtn">Simulate</button>
+      </div>
+      <div style="display: flex; justify-content: left; gap: 10px; margin-top: 1px; font-family: 'Mono';">
+        <p><button class="viewBtn" data-view="league">League</button></p>
+        <p><button class="viewBtn" data-view="conference">Conference</button></p>
+        <p><button class="viewBtn" data-view="division">Division</button></p>
+      </div>
+      <div id="output"></div>
+    </div>
+    <div class="sidebar west" id="west-sidebar">
+    </div>
+  </div>
+  <script>
+    const eastTeams = [
+      "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
+      "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers", "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders", "New York Rangers", "Washington Capitals"
+    ];
+    const westTeams = [
+      "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild", "Nashville Predators", "St. Louis Blues", "Winnipeg Jets",
+      "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights", 
+      "Utah Hockey Club" 
+    ];
+
+    const allTeams = eastTeams.concat(westTeams);
+
+    const teamAbbrevs = {
+      "Anaheim Ducks": "ANA", "Arizona Coyotes": "ARI", "Boston Bruins": "BOS", "Buffalo Sabres": "BUF",
+      "Calgary Flames": "CGY", "Carolina Hurricanes": "CAR", "Chicago Blackhawks": "CHI", "Colorado Avalanche": "COL",
+      "Columbus Blue Jackets": "CBJ", "Dallas Stars": "DAL", "Detroit Red Wings": "DET", "Edmonton Oilers": "EDM",
+      "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montreal Canadiens": "MTL",
+      "Nashville Predators": "NSH", "New Jersey Devils": "NJD", "New York Islanders": "NYI", "New York Rangers": "NYR",
+      "Ottawa Senators": "OTT", "Philadelphia Flyers": "PHI", "Pittsburgh Penguins": "PIT", "San Jose Sharks": "SJS",
+      "Seattle Kraken": "SEA", "St. Louis Blues": "STL", "Tampa Bay Lightning": "TBL", "Toronto Maple Leafs": "TOR",
+      "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG",
+      "Utah Hockey Club": "UTA"
+    };
+
+    function populateSidebar(sidebarId, teams) {
+      fetch('https://api-web.nhle.com/v1/standings/now')
+        .then(res => res.json())
+        .then(data => {
+          const logoMap = {};
+          data.standings.forEach(team => {
+            logoMap[team.teamName.default] = team.teamLogo;
+          });
+          const sidebar = document.getElementById(sidebarId);
+          teams.forEach(name => {
+            const img = document.createElement('img');
+            img.src = logoMap[name] || `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+            img.alt = name;
+            img.title = name;
+            sidebar.appendChild(img);
+          });
+        })
+        .catch(() => {
+          const sidebar = document.getElementById(sidebarId);
+          teams.forEach(name => {
+            const img = document.createElement('img');
+            img.src = `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+            img.alt = name;
+            img.title = name;
+            sidebar.appendChild(img);
+          });
+        });
+    }
+    populateSidebar('east-sidebar', eastTeams);
+    populateSidebar('west-sidebar', westTeams);
+
+    const teamSelect = document.getElementById("teamSelect");
+    allTeams.forEach(team => {
+      const opt = document.createElement("option");
+      opt.value = team;
+      opt.textContent = team;
+      teamSelect.appendChild(opt);
+    });
+
+    const nhlColors = {
+      "Anaheim Ducks":             { main: "#FC4C02", secondary: "#111D25" },
+      "Arizona Coyotes":           { main: "#8C2633", secondary: "#E2D6B5" },
+      "Boston Bruins":             { main: "#FFB81C", secondary: "#111111" },
+      "Buffalo Sabres":            { main: "#002654", secondary: "#FDBB2F" },
+      "Calgary Flames":            { main: "#C8102E", secondary: "#F1BE48" },
+      "Carolina Hurricanes":       { main: "#CC0000", secondary: "#000000" },
+      "Chicago Blackhawks":        { main: "#CF0A2C", secondary: "#000000" },
+      "Colorado Avalanche":        { main: "#6F263D", secondary: "#236192" },
+      "Columbus Blue Jackets":     { main: "#002654", secondary: "#CE1126" },
+      "Dallas Stars":              { main: "#006847", secondary: "#A2AAAD" },
+      "Detroit Red Wings":         { main: "#CE1126", secondary: "#FFFFFF" },
+      "Edmonton Oilers":           { main: "#041E42", secondary: "#FF4C00" },
+      "Florida Panthers":          { main: "#041E42", secondary: "#C8102E" },
+      "Los Angeles Kings":         { main: "#111111", secondary: "#A2AAAD" },
+      "Minnesota Wild":            { main: "#154734", secondary: "#A6192E" },
+      "Montreal Canadiens":        { main: "#AF1E2D", secondary: "#192168" },
+      "Nashville Predators":       { main: "#FFB81C", secondary: "#041E42" },
+      "New Jersey Devils":         { main: "#CE1126", secondary: "#000000" },
+      "New York Islanders":        { main: "#00539B", secondary: "#F47D30" },
+      "New York Rangers":          { main: "#0038A8", secondary: "#CE1126" },
+      "Ottawa Senators":           { main: "#C8102E", secondary: "#000000" },
+      "Philadelphia Flyers":       { main: "#F74902", secondary: "#000000" },
+      "Pittsburgh Penguins":       { main: "#FCB514", secondary: "#000000" },
+      "San Jose Sharks":           { main: "#006D75", secondary: "#EA7200" },
+      "Seattle Kraken":            { main: "#355464", secondary: "#99D9D9" },
+      "St. Louis Blues":           { main: "#002F87", secondary: "#FCB514" },
+      "Tampa Bay Lightning":       { main: "#002868", secondary: "#FFFFFF" },
+      "Toronto Maple Leafs":       { main: "#00205B", secondary: "#FFFFFF" },
+      "Vancouver Canucks":         { main: "#00205B", secondary: "#00843D" },
+      "Vegas Golden Knights":      { main: "#B4975A", secondary: "#333F42" },
+      "Washington Capitals":       { main: "#041E42", secondary: "#C8102E" },
+      "Winnipeg Jets":             { main: "#041E42", secondary: "#041E42" },
+      "Utah Hockey Club":          { main: "#6CACE3", secondary: "#ffffff" }
+    };
+
+    const CORS_PROXY = "https://corsproxy.io/?";
+    const API_URL = "https://api-web.nhle.com/v1/standings/now";
+    const TOTAL_GAMES = 82;
+
+    let latestStandings = [];
+    let selectedTeam = null;
+    let selectedDivision = null;
+    let selectedConference = null;
+    let currentColors = { main: "#222", secondary: "#ccc" };
+
+    const teamStructure = {
+      "Eastern Conference": {
+        "Atlantic Division": [
+          "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers",
+          "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs"
+        ],
+        "Metropolitan Division": [
+          "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers",
+          "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders",
+          "New York Rangers", "Washington Capitals"
+        ]
+      },
+      "Western Conference": {
+        "Central Division": [
+          "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild",
+          "Nashville Predators", "St. Louis Blues", "Winnipeg Jets", "Utah Hockey Club"
+        ],
+        "Pacific Division": [
+          "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers",
+          "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights"
+        ]
+      }
+    };
+
+    function findTeamGroup(teamName) {
+      for (const conference in teamStructure) {
+        for (const division in teamStructure[conference]) {
+          if (teamStructure[conference][division].includes(teamName)) {
+            return { conference, division };
+          }
+        }
+      }
+      return { conference: null, division: null };
+    }
+
+    function filterStandings(viewType, standings) {
+      if (viewType === "league") return standings;
+      if (!selectedTeam) return standings;
+      if (viewType === "conference") {
+        const conferenceDivisions = teamStructure[selectedConference];
+        const allConferenceTeams = Object.values(conferenceDivisions).flat();
+        return standings.filter(t => allConferenceTeams.includes(t.name));
+      }
+      if (viewType === "division") {
+        return standings.filter(t =>
+          teamStructure[selectedConference]?.[selectedDivision]?.includes(t.name)
+        );
+      }
+      return standings;
+    }
+
+    function renderStandings(viewType, standings) {
+      const filtered = filterStandings(viewType, standings);
+      filtered.sort((a, b) => b.points - a.points);
+
+      let html = `<h3>${viewType.charAt(0).toUpperCase() + viewType.slice(1)} Standings</h3>`;
+      html += `<table><tr><th>Rank</th><th>Team</th><th>Projected Points</th></tr>`;
+      filtered.forEach((team, i) => {
+        html += `<tr class="${team.isUser ? 'highlight' : ''}">
+          <td>${i + 1}</td>
+          <td>${team.name}</td>
+          <td>${team.points}</td>
+        </tr>`;
+      });
+      html += `</table>`;
+      const output = document.getElementById("output");
+      output.innerHTML += html;
+      output.style.color = currentColors.main;
+    }
+
+    function resetColors() {
+      currentColors = { main: "#222", secondary: "#ccc" };
+      document.getElementById("output").style.color = currentColors.main;
+    }
+
+    teamSelect.addEventListener("change", async () => {
+      const teamName = teamSelect.value;
+      if (!teamName) return;
+      try {
+        const res = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
+        const data = await res.json();
+        const teams = data.standings;
+        const userTeam = teams.find(t => t.teamName.default === teamName);
+        if (!userTeam) {
+          resetColors();
+          return;
+        }
+        const remaining = TOTAL_GAMES - userTeam.gamesPlayed;
+        const select = document.getElementById("winsSelect");
+        select.innerHTML = "";
+        for (let i = 0; i <= remaining; i++) {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = `${i} win${i !== 1 ? 's' : ''} out of ${remaining}`;
+          select.appendChild(option);
+        }
+      } catch (err) {
+        resetColors();
+        console.error(err);
+      }
+    });
+
+    document.getElementById("simulateBtn").addEventListener("click", async () => {
+      const teamNameInput = teamSelect.value.trim();
+      const wins = parseInt(document.getElementById("winsSelect").value);
+      const output = document.getElementById("output");
+      output.innerHTML = "Loading...";
+      try {
+        const res = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
+        const data = await res.json();
+        const teams = data.standings;
+        const userTeam = teams.find(t => t.teamName.default === teamNameInput);
+        if (!userTeam) {
+          resetColors();
+          output.innerHTML = `<strong>Team not found. Please check the name.</strong>`;
+          return;
+        }
+        selectedTeam = userTeam.teamName.default;
+        const { conference, division } = findTeamGroup(selectedTeam);
+        selectedConference = conference;
+        selectedDivision = division;
+        currentColors = nhlColors[selectedTeam] || { main: "#222", secondary: "#ccc" };
+        const gamesPlayed = userTeam.gamesPlayed;
+        const remaining = TOTAL_GAMES - gamesPlayed;
+        const addedPoints = wins * 2;
+        const finalPoints = userTeam.points + addedPoints;
+
+        const projectedStandings = teams.map(t => {
+          const gpLeft = TOTAL_GAMES - t.gamesPlayed;
+          let projPts;
+          if (t.teamName.default === teamNameInput) {
+            projPts = finalPoints;
+          } else {
+            const ptsPct = t.gamesPlayed > 0 ? t.points / (t.gamesPlayed * 2) : 0.5;
+            projPts = Math.round(t.points + gpLeft * 2 * ptsPct);
+          }
+          return {
+            name: t.teamName.default,
+            points: projPts,
+            isUser: t.teamName.default === teamNameInput
+          };
+        });
+
+        projectedStandings.sort((a, b) => b.points - a.points);
+        latestStandings = projectedStandings;
+
+        const clinch = userTeam.clinchIndicator;
+        const clinchMap = {
+          x: "CLINCHED PLAYOFF SPOT",
+          y: "CLINCHED DIVISION",
+          z: "CLINCHED CONFERENCE",
+          e: "ELIMINATED"
+        };
+
+        let resultText = "";
+
+        if (clinch === "e") {
+          resultText = `<p style="color:#aa1e1e;"><strong>${selectedTeam} has been ELIMINATED from playoff contention.</strong></p>`;
+        } else if (clinch) {
+          resultText = `<p style="color:#197d2b;"><strong>${selectedTeam} has ${clinchMap[clinch]}.</strong></p>`;
+        } else {
+          const playoffCutoff = projectedStandings[15].points;
+          resultText = finalPoints >= playoffCutoff
+            ? `<p style="color:green;"><strong>${selectedTeam} likely MAKES the playoffs.</strong></p>`
+            : `<p style="color:red;"><strong>${selectedTeam} likely MISSES the playoffs.</strong></p>`;
+        }
+        output.innerHTML = resultText;
+        renderStandings("league", projectedStandings);
+        output.style.color = currentColors.main;
+      } catch (err) {
+        resetColors();
+        output.innerHTML = `<strong>Error:</strong> ${err.message}`;
+      }
+    });
+
+    document.querySelectorAll(".viewBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const view = btn.getAttribute("data-view");
+        if (latestStandings.length > 0) {
+          const resultMsg = document.getElementById("output").querySelector("p")?.outerHTML || "";
+          document.getElementById("output").innerHTML = resultMsg;
+          renderStandings(view, latestStandings);
+        }
+      });
+    });
+
+    resetColors();
+
+  </script>
+</body>
+</html>

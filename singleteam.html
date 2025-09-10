@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PuckCalcs: WISC</title>
+  <style>
+    body { font-family: Mono; background: #fff; text-align: center;} 
+      header {
+    font-family: Mono; 
+    font-size: 3rem;
+    margin: 30px 0 10px 0;
+    font-weight: bold;
+    color: #222;
+    text-align: center;
+  }
+    .main { 
+      max-width: 1000px; margin: 20px auto;}
+    table { 
+      border-collapse: separate; margin-top: 10px; width: 100%;
+       }
+    th, td { 
+      border: 1px solid #ccc; padding: 6px 8px;
+       }
+    th { 
+      background: #e7e7e7; }
+    .pick-btn { 
+      margin: 0 1px; padding: 2px 7px; border-radius: 4px; border: 1px solid #aaa; cursor: pointer; font-family: Mono;}
+    .selected { 
+      background: #222; 
+      border: 2px solid #fff;
+      font-family: Mono; 
+      color: #fff; }
+    .highlight { 
+      background: #dff0d8; }
+    #gamesList { 
+      max-height: 340px; overflow: auto; }
+    .small { 
+      font-size: 0.9em; color: #555; }
+      #team {
+      font-family: Mono;
+      }
+    #teamSelect { 
+      margin-bottom: 18px;
+      font-family: Mono;
+       
+    }
+    .sidebar {
+      width: 7%;
+      min-width: 44px;
+      padding: 6px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      max-height: 100vh;
+      overflow-y: visible;
+      position: sticky;
+      top: 0;
+    }
+    .sidebar img {
+      width: 30px;
+      height: 40px;
+      display: block;
+      object-fit: contain;
+      margin-bottom: 2px; 
+    }
+    .sidebar-label {
+      font-size: 0.8em;
+      font-weight: bold;
+      margin-bottom: 4px;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .page-container {
+      display: flex;
+    }
+    .viewBtn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background: #f0f0f0;
+      cursor: pointer;
+      font-family: Mono;
+    }
+    .viewBtn.selected {
+      background: #222;
+      color: #fff;
+      font-weight: bold;
+
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+      .main {
+        width: 100%;
+      }
+      .page-container {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="sidebar east" id="east-sidebar"></div>
+    <div class="main">
+      <h1>What-If Single Team Calc</h1>
+      <label for="teamSelect">Choose your team!</label>
+      <select id="teamSelect">
+        <option value="" disabled selected>Select a team</option>
+      </select>
+      <div id="gamesList"></div>
+      <div style="margin-top: 10px; margin-bottom:10px;">
+        <button class="viewBtn" data-view="league">League</button>
+        <button class="viewBtn" data-view="conference">Conference</button>
+        <button class="viewBtn" data-view="division">Division</button>
+      </div>
+      <div id="standings"></div>
+    </div>
+    <div class="sidebar west" id="west-sidebar"></div>
+  </div>
+<script>
+const CORS_PROXY = "https://corsproxy.io/?";
+const SCHEDULE_API = "https://api-web.nhle.com/v1/schedule/now";
+const STANDINGS_API = "https://api-web.nhle.com/v1/standings/now";
+const TOTAL_GAMES = 82;
+
+const abbrevToFull = {
+  "ANA": "Anaheim Ducks", "ARI": "Arizona Coyotes", "BOS": "Boston Bruins", "BUF": "Buffalo Sabres",
+  "CGY": "Calgary Flames", "CAR": "Carolina Hurricanes", "CHI": "Chicago Blackhawks", "COL": "Colorado Avalanche",
+  "CBJ": "Columbus Blue Jackets", "DAL": "Dallas Stars", "DET": "Detroit Red Wings", "EDM": "Edmonton Oilers",
+  "FLA": "Florida Panthers", "LAK": "Los Angeles Kings", "MIN": "Minnesota Wild", "MTL": "Montreal Canadiens",
+  "NSH": "Nashville Predators", "NJD": "New Jersey Devils", "NYI": "New York Islanders", "NYR": "New York Rangers",
+  "OTT": "Ottawa Senators", "PHI": "Philadelphia Flyers", "PIT": "Pittsburgh Penguins", "SJS": "San Jose Sharks",
+  "SEA": "Seattle Kraken", "STL": "St. Louis Blues", "TBL": "Tampa Bay Lightning", "TOR": "Toronto Maple Leafs",
+  "VAN": "Vancouver Canucks", "VGK": "Vegas Golden Knights", "WSH": "Washington Capitals", "WPG": "Winnipeg Jets",
+  "UTA": "Utah Hockey Club"
+};
+const nhlColors = {
+      "Anaheim Ducks":             { main: "#FC4C02", secondary: "#111D25" },
+      "Arizona Coyotes":           { main: "#8C2633", secondary: "#E2D6B5" },
+      "Boston Bruins":             { main: "#FFB81C", secondary: "#111111" },
+      "Buffalo Sabres":            { main: "#002654", secondary: "#FDBB2F" },
+      "Calgary Flames":            { main: "#C8102E", secondary: "#F1BE48" },
+      "Carolina Hurricanes":       { main: "#CC0000", secondary: "#000000" },
+      "Chicago Blackhawks":        { main: "#CF0A2C", secondary: "#000000" },
+      "Colorado Avalanche":        { main: "#6F263D", secondary: "#236192" },
+      "Columbus Blue Jackets":     { main: "#002654", secondary: "#CE1126" },
+      "Dallas Stars":              { main: "#006847", secondary: "#A2AAAD" },
+      "Detroit Red Wings":         { main: "#CE1126", secondary: "#FFFFFF" },
+      "Edmonton Oilers":           { main: "#041E42", secondary: "#FF4C00" },
+      "Florida Panthers":          { main: "#041E42", secondary: "#C8102E" },
+      "Los Angeles Kings":         { main: "#111111", secondary: "#A2AAAD" },
+      "Minnesota Wild":            { main: "#154734", secondary: "#A6192E" },
+      "Montreal Canadiens":        { main: "#AF1E2D", secondary: "#192168" },
+      "Nashville Predators":       { main: "#FFB81C", secondary: "#041E42" },
+      "New Jersey Devils":         { main: "#CE1126", secondary: "#000000" },
+      "New York Islanders":        { main: "#00539B", secondary: "#F47D30" },
+      "New York Rangers":          { main: "#0038A8", secondary: "#CE1126" },
+      "Ottawa Senators":           { main: "#C8102E", secondary: "#000000" },
+      "Philadelphia Flyers":       { main: "#F74902", secondary: "#000000" },
+      "Pittsburgh Penguins":       { main: "#FCB514", secondary: "#000000" },
+      "San Jose Sharks":           { main: "#006D75", secondary: "#EA7200" },
+      "Seattle Kraken":            { main: "#355464", secondary: "#99D9D9" },
+      "St. Louis Blues":           { main: "#002F87", secondary: "#FCB514" },
+      "Tampa Bay Lightning":       { main: "#002868", secondary: "#FFFFFF" },
+      "Toronto Maple Leafs":       { main: "#00205B", secondary: "#FFFFFF" },
+      "Vancouver Canucks":         { main: "#00205B", secondary: "#00843D" },
+      "Vegas Golden Knights":      { main: "#B4975A", secondary: "#333F42" },
+      "Washington Capitals":       { main: "#041E42", secondary: "#C8102E" },
+      "Winnipeg Jets":             { main: "#041E42", secondary: "#041E42" }, 
+      "Utah Hockey Club":          { main: "#6CACE3", secondary: "#ffffff" }
+    };
+    
+const eastTeams = [
+  "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
+  "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers", "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders", "New York Rangers", "Washington Capitals"
+];
+const westTeams = [
+  "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild", "Nashville Predators", "St. Louis Blues", "Winnipeg Jets",
+  "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights", 
+  "Utah Hockey Club"
+];
+const teamAbbrevs = {
+  "Anaheim Ducks": "ANA", "Arizona Coyotes": "ARI", "Boston Bruins": "BOS", "Buffalo Sabres": "BUF",
+  "Calgary Flames": "CGY", "Carolina Hurricanes": "CAR", "Chicago Blackhawks": "CHI", "Colorado Avalanche": "COL",
+  "Columbus Blue Jackets": "CBJ", "Dallas Stars": "DAL", "Detroit Red Wings": "DET", "Edmonton Oilers": "EDM",
+  "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montreal Canadiens": "MTL",
+  "Nashville Predators": "NSH", "New Jersey Devils": "NJD", "New York Islanders": "NYI", "New York Rangers": "NYR",
+  "Ottawa Senators": "OTT", "Philadelphia Flyers": "PHI", "Pittsburgh Penguins": "PIT", "San Jose Sharks": "SJS",
+  "Seattle Kraken": "SEA", "St. Louis Blues": "STL", "Tampa Bay Lightning": "TBL", "Toronto Maple Leafs": "TOR",
+  "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG",
+  "Utah Hockey Club": "UTA"
+};
+
+const teamStructure = {
+  "Eastern Conference": {
+    "Atlantic Division": [
+      "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers",
+      "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs"
+    ],
+    "Metropolitan Division": [
+      "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers",
+      "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders",
+      "New York Rangers", "Washington Capitals"
+    ]
+  },
+  "Western Conference": {
+    "Central Division": [
+      "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild",
+      "Nashville Predators", "St. Louis Blues", "Winnipeg Jets"
+    ],
+    "Pacific Division": [
+      "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers",
+      "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights"
+    ]
+  }
+};
+
+function populateSidebar(sidebarId, teams) {
+  fetch('https://api-web.nhle.com/v1/standings/now')
+    .then(res => res.json())
+    .then(data => {
+      const logoMap = {};
+      data.standings.forEach(team => {
+        logoMap[team.teamName.default] = team.teamLogo;
+      });
+      const sidebar = document.getElementById(sidebarId);
+      teams.forEach(name => {
+        const img = document.createElement('img');
+        img.src = logoMap[name] || `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+        img.alt = name;
+        img.title = name;
+        sidebar.appendChild(img);
+      });
+    })
+    .catch(() => {
+      const sidebar = document.getElementById(sidebarId);
+      teams.forEach(name => {
+        const img = document.createElement('img');
+        img.src = `https://assets.nhle.com/logos/nhl/svg/${teamAbbrevs[name]}_light.svg`;
+        img.alt = name;
+        img.title = name;
+        sidebar.appendChild(img);
+      });
+    });
+}
+populateSidebar('east-sidebar', eastTeams);
+populateSidebar('west-sidebar', westTeams);
+
+let allTeams = [];
+let standingsBase = {};
+let teamGames = [];
+let userPicks = [];
+let selectedTeam = "";
+let selectedConference = null;
+let selectedDivision = null;
+let currentView = "league"; // league, conference, division
+
+function outcomeText(v, usHome) {
+  if (!v) return "?";
+  if (v==='win') return usHome ? "Home W (2-0)" : "Away W (2-0)";
+  if (v==='otw') return usHome ? "Home OTW (2-1)" : "Away OTW (2-1)";
+  if (v==='otl') return usHome ? "Home OTL (1-2)" : "Away OTL (1-2)";
+  if (v==='loss') return usHome ? "Home L (0-2)" : "Away L (0-2)";
+}
+
+function getPoints(result) {
+  // [selectedTeam pts, opp pts]
+  if (result === "win") return [2,0];
+  if (result === "otw") return [2,1];
+  if (result === "otl") return [1,2];
+  if (result === "loss") return [0,2];
+  return [0,0];
+}
+
+async function loadTeams() {
+  const standings = await fetch(CORS_PROXY+encodeURIComponent(STANDINGS_API)).then(r=>r.json());
+  allTeams = standings.standings.map(t=>t.teamName.default);
+  standingsBase = {};
+  standings.standings.forEach((t,i)=> {
+    standingsBase[t.teamName.default] = {
+      name: t.teamName.default, points: t.points, gamesPlayed: t.gamesPlayed
+    };
+  });
+  // Fill dropdown
+  const sel = document.getElementById("teamSelect");
+  sel.innerHTML = '<option value="" disabled selected>Select a team</option>';
+  allTeams.forEach(t=>{
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadScheduleForTeam(team) {
+  document.getElementById("gamesList").innerHTML = "Loading schedule...";
+  const sch = await fetch(CORS_PROXY+encodeURIComponent(SCHEDULE_API)).then(r=>r.json());
+  teamGames = [];
+  if (Array.isArray(sch.gameWeek)) {
+    sch.gameWeek.forEach(day=>{
+      if (!Array.isArray(day.games)) return;
+      day.games.forEach(game=>{
+        const homeAbbrev = game.homeTeam?.abbrev;
+        const awayAbbrev = game.awayTeam?.abbrev;
+        const home = abbrevToFull[homeAbbrev];
+        const away = abbrevToFull[awayAbbrev];
+        if (!home || !away) return;
+        if (home===team || away===team) {
+          teamGames.push({
+            date: day.date,
+            home, away,
+            usHome: home===team,
+            opp: home===team ? away : home,
+            id: game.id
+          });
+        }
+      });
+    });
+  }
+  userPicks = Array(teamGames.length).fill(null);
+  drawGames();
+  simulate();
+}
+
+function pick(idx, v) {
+  userPicks[idx] = v;
+  drawGames();
+  simulate();
+}
+
+function drawGames() {
+  let html = `<table><tr><th>Date</th><th>Opponent</th><th>Venue</th><th>Outcome</th></tr>`;
+  if (teamGames.length === 0) {
+    html += `<tr><td colspan="4">(No future games for this team)</td></tr>`;
+  } else {
+    teamGames.forEach((g, idx)=>{
+      html += `<tr>
+        <td>${g.date}</td>
+        <td>${g.opp}</td>
+        <td>${g.usHome ? "Home" : "Away"}</td>
+        <td>
+          <button class="pick-btn${userPicks[idx]==='win'?' selected':''}" onclick="pick(${idx},'win')">Win</button>
+          <button class="pick-btn${userPicks[idx]==='otw'?' selected':''}" onclick="pick(${idx},'otw')">OT Win</button>
+          <button class="pick-btn${userPicks[idx]==='otl'?' selected':''}" onclick="pick(${idx},'otl')">OT Loss</button>
+          <button class="pick-btn${userPicks[idx]==='loss'?' selected':''}" onclick="pick(${idx},'loss')">Loss</button>
+          <button class="pick-btn${userPicks[idx]==null?' selected':''}" onclick="pick(${idx},null)">?</button>
+          <span class="small">${outcomeText(userPicks[idx], g.usHome)}</span>
+        </td>
+      </tr>`;
+    });
+  }
+  html+="</table>";
+  document.getElementById("gamesList").innerHTML = html;
+}
+
+function findTeamGroup(teamName) {
+  for (const conference in teamStructure) {
+    for (const division in teamStructure[conference]) {
+      if (teamStructure[conference][division].includes(teamName)) {
+        return { conference, division };
+      }
+    }
+  }
+  return { conference: null, division: null };
+}
+
+function filterStandings(viewType, standings) {
+  if (viewType === "league") return standings;
+  if (!selectedTeam) return standings;
+  if (viewType === "conference") {
+    const conferenceDivisions = teamStructure[selectedConference];
+    const allConferenceTeams = Object.values(conferenceDivisions).flat();
+    return standings.filter(t => allConferenceTeams.includes(t.name));
+  }
+  if (viewType === "division") {
+    return standings.filter(t =>
+      teamStructure[selectedConference]?.[selectedDivision]?.includes(t.name)
+    );
+  }
+  return standings;
+}
+
+function simulate() {
+  if (!selectedTeam) return;
+  // Clone standings
+  let standings = {};
+  for (const t of allTeams) standings[t] = {...standingsBase[t]};
+  // Sim each game for this team
+  teamGames.forEach((g, idx)=>{
+    const pick = userPicks[idx];
+    if (!pick) return;
+    const [us, opp] = getPoints(pick);
+    standings[selectedTeam].points += us;
+    standings[selectedTeam].gamesPlayed += 1;
+    standings[g.opp].points += opp;
+    standings[g.opp].gamesPlayed += 1;
+  });
+  // Prepare standings array and filter by view
+  let arr = Object.values(standings);
+  arr = filterStandings(currentView, arr);
+  arr = arr.sort((a,b)=>b.points-a.points);
+  let html = `<h3>Projected Standings </h3><table><tr><th>Rank</th><th>Team</th><th>Pts</th><th>GP</th></tr>`;
+  arr.forEach((t,i)=>{
+    html += `<tr${t.name===selectedTeam?' class="highlight"':''}><td>${i+1}</td><td>${t.name}</td><td>${t.points}</td><td>${t.gamesPlayed}</td></tr>`;
+  });
+  html+="</table>";
+  document.getElementById("standings").innerHTML = html;
+}
+
+document.getElementById("teamSelect").addEventListener("change", function() {
+  selectedTeam = this.value;
+  const group = findTeamGroup(selectedTeam);
+  selectedConference = group.conference;
+  selectedDivision = group.division;
+  loadScheduleForTeam(selectedTeam);
+  // When team changes, reset to league view by default
+  document.querySelectorAll('.viewBtn').forEach(btn => btn.classList.remove('selected'));
+  document.querySelector('.viewBtn[data-view="league"]').classList.add('selected');
+  currentView = "league";
+});
+
+document.querySelectorAll('.viewBtn').forEach(btn => {
+  btn.addEventListener('click', function() {
+
+    currentView = this.getAttribute('data-view');
+    document.querySelectorAll('.viewBtn').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+    simulate();
+    
+  });
+});
+
+loadTeams();
+</script>
+</body>
+</html>
