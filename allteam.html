@@ -100,9 +100,9 @@
     <div class="sidebar west" id="west-sidebar"></div>
   </div>
 <script>
-  
+
 const CORS_PROXY = "https://corsproxy.io/?";
-const SCHEDULE_API = "https://api-web.nhle.com/v1/schedule/now";
+const SCHEDULE_API_BASE = "https://api-web.nhle.com/v1/club-schedule-season";
 const STANDINGS_API = "https://api-web.nhle.com/v1/standings/now";
 const TOTAL_GAMES = 82;
 
@@ -110,39 +110,37 @@ const abbrevToFull = {
   "ANA": "Anaheim Ducks", "ARI": "Arizona Coyotes", "BOS": "Boston Bruins", "BUF": "Buffalo Sabres",
   "CGY": "Calgary Flames", "CAR": "Carolina Hurricanes", "CHI": "Chicago Blackhawks", "COL": "Colorado Avalanche",
   "CBJ": "Columbus Blue Jackets", "DAL": "Dallas Stars", "DET": "Detroit Red Wings", "EDM": "Edmonton Oilers",
-  "FLA": "Florida Panthers", "LAK": "Los Angeles Kings", "MIN": "Minnesota Wild", "MTL": "Montréal Canadiens",
+  "FLA": "Florida Panthers", "LAK": "Los Angeles Kings", "MIN": "Minnesota Wild", "MTL": "Montreal Canadiens",
   "NSH": "Nashville Predators", "NJD": "New Jersey Devils", "NYI": "New York Islanders", "NYR": "New York Rangers",
   "OTT": "Ottawa Senators", "PHI": "Philadelphia Flyers", "PIT": "Pittsburgh Penguins", "SJS": "San Jose Sharks",
   "SEA": "Seattle Kraken", "STL": "St. Louis Blues", "TBL": "Tampa Bay Lightning", "TOR": "Toronto Maple Leafs",
-  "VAN": "Vancouver Canucks", "VGK": "Vegas Golden Knights", "WSH": "Washington Capitals", "WPG": "Winnipeg Jets", 
-  "UTA": "Utah Hockey Club"
+  "VAN": "Vancouver Canucks", "VGK": "Vegas Golden Knights", "WSH": "Washington Capitals", "WPG": "Winnipeg Jets"
 };
 
 const eastTeams = [
-  "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montréal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
+  "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers", "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs",
   "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers", "Pittsburgh Penguins", "New Jersey Devils", "New York Islanders", "New York Rangers", "Washington Capitals"
 ];
 const westTeams = [
   "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild", "Nashville Predators", "St. Louis Blues", "Winnipeg Jets",
-  "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights", "Utah Hockey Club"
+  "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers", "Los Angeles Kings", "San Jose Sharks", "Vancouver Canucks", "Vegas Golden Knights"
 ];
 const teamAbbrevs = {
   "Anaheim Ducks": "ANA", "Arizona Coyotes": "ARI", "Boston Bruins": "BOS", "Buffalo Sabres": "BUF",
   "Calgary Flames": "CGY", "Carolina Hurricanes": "CAR", "Chicago Blackhawks": "CHI", "Colorado Avalanche": "COL",
   "Columbus Blue Jackets": "CBJ", "Dallas Stars": "DAL", "Detroit Red Wings": "DET", "Edmonton Oilers": "EDM",
-  "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montréal Canadiens": "MTL",
+  "Florida Panthers": "FLA", "Los Angeles Kings": "LAK", "Minnesota Wild": "MIN", "Montreal Canadiens": "MTL",
   "Nashville Predators": "NSH", "New Jersey Devils": "NJD", "New York Islanders": "NYI", "New York Rangers": "NYR",
   "Ottawa Senators": "OTT", "Philadelphia Flyers": "PHI", "Pittsburgh Penguins": "PIT", "San Jose Sharks": "SJS",
   "Seattle Kraken": "SEA", "St. Louis Blues": "STL", "Tampa Bay Lightning": "TBL", "Toronto Maple Leafs": "TOR",
-  "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG", 
-  "Utah Hockey Club": "UTA"
+  "Vancouver Canucks": "VAN", "Vegas Golden Knights": "VGK", "Washington Capitals": "WSH", "Winnipeg Jets": "WPG"
 };
 
 const teamStructure = {
   "Eastern Conference": {
     "Atlantic Division": [
       "Boston Bruins", "Buffalo Sabres", "Detroit Red Wings", "Florida Panthers",
-      "Montréal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs"
+      "Montreal Canadiens", "Ottawa Senators", "Tampa Bay Lightning", "Toronto Maple Leafs"
     ],
     "Metropolitan Division": [
       "Carolina Hurricanes", "Columbus Blue Jackets", "Philadelphia Flyers",
@@ -153,7 +151,7 @@ const teamStructure = {
   "Western Conference": {
     "Central Division": [
       "Chicago Blackhawks", "Colorado Avalanche", "Dallas Stars", "Minnesota Wild",
-      "Nashville Predators", "St. Louis Blues", "Winnipeg Jets", "Utah Hockey Club"
+      "Nashville Predators", "St. Louis Blues", "Winnipeg Jets"
     ],
     "Pacific Division": [
       "Anaheim Ducks", "Arizona Coyotes", "Calgary Flames", "Edmonton Oilers",
@@ -163,7 +161,7 @@ const teamStructure = {
 };
 
 function populateSidebar(sidebarId, teams) {
-  fetch('https://api-web.nhle.com/v1/standings/now')
+  fetch('https://api-web.nhle.com/v1/standings/2025-02-10')
     .then(res => res.json())
     .then(data => {
       const logoMap = {};
@@ -264,25 +262,35 @@ async function loadTeamsAndSchedule() {
     opt.textContent = t;
     sel.appendChild(opt);
   });
-  // Load schedule
-  const sch = await fetch(CORS_PROXY+encodeURIComponent(SCHEDULE_API)).then(r=>r.json());
+  // Load schedule for ALL TEAMS using the new API structure
   scheduleGames = [];
-  if (Array.isArray(sch.gameWeek)) {
-    sch.gameWeek.forEach(day=>{
-      if (!Array.isArray(day.games)) return;
-      day.games.forEach(game=>{
-        const homeAbbrev = game.homeTeam?.abbrev;
-        const awayAbbrev = game.awayTeam?.abbrev;
-        const home = abbrevToFull[homeAbbrev];
-        const away = abbrevToFull[awayAbbrev];
-        if (!home || !away) return;
-        scheduleGames.push({
-          date: day.date,
-          home, away,
-          id: game.id
+  for (const team of allTeams) {
+    const abbrev = teamAbbrevs[team];
+    const url = CORS_PROXY + encodeURIComponent(`${SCHEDULE_API_BASE}/${abbrev}/now`);
+    try {
+      const sch = await fetch(url).then(r=>r.json());
+      if (Array.isArray(sch.games)) {
+        sch.games.forEach(game=>{
+          const homeAbbrev = game.homeTeamAbbrev || game.homeTeam?.abbrev;
+          const awayAbbrev = game.awayTeamAbbrev || game.awayTeam?.abbrev;
+          const home = abbrevToFull[homeAbbrev];
+          const away = abbrevToFull[awayAbbrev];
+          if (!home || !away) return;
+          // Avoid duplicate games (some teams may repeat the same games!)
+          const uniqueId = `${game.id}_${home}_${away}`;
+          if (!scheduleGames.some(g=>g.uniqueId===uniqueId)) {
+            scheduleGames.push({
+              date: game.gameDate || game.gameDateUTC || game.startTimeUTC || game.startTime,
+              home, away,
+              id: game.id,
+              uniqueId
+            });
+          }
         });
-      });
-    });
+      }
+    } catch (e) {
+      // If error, just skip this team
+    }
   }
   userPicks = Array(scheduleGames.length).fill(null);
   drawGames();
@@ -372,6 +380,4 @@ document.querySelectorAll('.viewBtn').forEach(btn => {
 loadTeamsAndSchedule();
 </script>
 </body>
-
 </html>
-
